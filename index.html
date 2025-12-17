@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLINILAB - Sua Saúde Visual</title>
+    <title>CONSULTORIO OLHARYS - Sua Saúde Visual</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -254,7 +254,7 @@
             // 2. Redirecionar WhatsApp
             const msg = `Olá, gostaria de confirmar meu agendamento na CLINILAB.%0A%0A*Profissional:* ${window.selectedProf.name} (${window.selectedProf.role})%0A*Valor:* R$ ${window.selectedProf.price.toFixed(2)}%0A*Data:* ${window.selectedDate.split('-').reverse().join('/')}%0A*Horário:* ${window.selectedTime}%0A%0A*Meus Dados:*%0ANome: ${clientData.name}%0ACPF: ${clientData.cpf}%0ATelefone: ${clientData.phone}%0AEndereço: ${clientData.address}`;
             
-            window.open(`https://wa.me/5541996509734?text=${msg}`, '_blank');
+            window.open(`https://wa.me/5544991837620?text=${msg}`, '_blank');
             
             // Reset UI
             alert("Agendamento iniciado! Finalize a conversa no WhatsApp.");
@@ -436,4 +436,5 @@
     </footer>
 
 </body>
+
 </html>
