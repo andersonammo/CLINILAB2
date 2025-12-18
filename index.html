@@ -235,7 +235,6 @@
             
             const clientData = {
                 name: document.getElementById('client-name').value,
-                cpf: document.getElementById('client-cpf').value,
                 phone: document.getElementById('client-phone').value,
                 address: document.getElementById('client-address').value
             };
@@ -252,7 +251,7 @@
             await window.saveAppointment(clientData, false);
 
             // 2. Redirecionar WhatsApp
-            const msg = `Olá, gostaria de confirmar meu agendamento na CLINILAB.%0A%0A*Profissional:* ${window.selectedProf.name} (${window.selectedProf.role})%0A*Valor:* R$ ${window.selectedProf.price.toFixed(2)}%0A*Data:* ${window.selectedDate.split('-').reverse().join('/')}%0A*Horário:* ${window.selectedTime}%0A%0A*Meus Dados:*%0ANome: ${clientData.name}%0ACPF: ${clientData.cpf}%0ATelefone: ${clientData.phone}%0AEndereço: ${clientData.address}`;
+            const msg = `Olá, gostaria de confirmar meu agendamento no CONSULTÓRIO OLHARYS.%0A%0A*Profissional:* ${window.selectedProf.name} (${window.selectedProf.role})%0A*Valor:* R$ ${window.selectedProf.price.toFixed(2)}%0A*Data:* ${window.selectedDate.split('-').reverse().join('/')}%0A*Horário:* ${window.selectedTime}%0A%0A*Meus Dados:*%0ANome: ${clientData.name}%0ACPF: ${clientData.cpf}%0ATelefone: ${clientData.phone}%0AEndereço: ${clientData.address}`;
             
             window.open(`https://wa.me/5544991837620?text=${msg}`, '_blank');
             
@@ -309,10 +308,10 @@
         
         <div class="container mx-auto px-6 relative z-10 text-center text-white">
             <h2 class="text-lg font-semibold tracking-widest text-blue-400 mb-2">BEM-VINDO À</h2>
-            <h1 class="text-6xl font-bold mb-4 tracking-tight">CLINILAB</h1>
+            <h1 class="text-6xl font-bold mb-4 tracking-tight">CONSULTÓRIO OLHARYS</h1>
             <p class="text-xl font-light italic opacity-90 mb-8">"Sua saúde visual é a nossa prioridade"</p>
             <a href="#agendamento" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all transform hover:scale-105">
-                Agendar Consulta Online
+                Agendar Consulta
             </a>
         </div>
     </header>
@@ -340,29 +339,16 @@
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <!-- Cards gerados dinamicamente via JS -->
-                    <div id="card-cleide" onclick="selectProfessional('cleide')" class="prof-card cursor-pointer border rounded-xl p-4 hover:shadow-lg transition-all text-center">
-                        <div class="w-16 h-16 bg-slate-200 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl">👩🏾‍⚕️</div>
-                        <h4 class="font-bold text-slate-800">Cleide Rosa</h4>
-                        <p class="text-xs text-slate-500 uppercase">Optometrista</p>
-                        <p class="text-blue-600 font-bold mt-2">R$ 120,00</p>
-                    </div>
-                    <div id="card-joao" onclick="selectProfessional('joao')" class="prof-card cursor-pointer border rounded-xl p-4 hover:shadow-lg transition-all text-center">
-                        <div class="w-16 h-16 bg-slate-200 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl">👨🏻‍⚕️</div>
-                        <h4 class="font-bold text-slate-800">Joao Carlos</h4>
-                        <p class="text-xs text-slate-500 uppercase">Optometrista</p>
-                        <p class="text-blue-600 font-bold mt-2">R$ 120,00</p>
-                    </div>
                     <div id="card-guilherme" onclick="selectProfessional('guilherme')" class="prof-card cursor-pointer border rounded-xl p-4 hover:shadow-lg transition-all text-center">
                         <div class="w-16 h-16 bg-slate-200 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl">👨🏽‍⚕️</div>
-                        <h4 class="font-bold text-slate-800">Guilherme Arantes</h4>
-                        <p class="text-xs text-slate-500 uppercase">Optometrista</p>
-                        <p class="text-blue-600 font-bold mt-2">R$ 120,00</p>
+                        <p class="text-xs text-slate-500 uppercase">Agendamento com Optometrista</p>
+                        <p class="text-blue-600 font-bold mt-2"> a partir de R$ 120,00</p>
                     </div>
                     <div id="card-eduardo" onclick="selectProfessional('eduardo')" class="prof-card cursor-pointer border rounded-xl p-4 hover:shadow-lg transition-all text-center border-blue-100 bg-blue-50/50">
                         <div class="w-16 h-16 bg-blue-100 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl">👨🏻‍⚕️</div>
-                        <h4 class="font-bold text-slate-800">Dr. Eduardo Sodré</h4>
+                        
                         <p class="text-xs text-slate-500 uppercase">Oftalmologista</p>
-                        <p class="text-blue-600 font-bold mt-2">R$ 180,00</p>
+                        <p class="text-blue-600 font-bold mt-2">a partir de R$ 180,00</p>
                     </div>
                 </div>
             </div>
@@ -405,12 +391,9 @@
                         <label class="block text-xs font-bold text-gray-500 uppercase">Nome Completo</label>
                         <input type="text" id="client-name" required class="w-full p-3 border rounded-lg bg-gray-50">
                     </div>
-                    <div class="col-span-2 md:col-span-1">
-                        <label class="block text-xs font-bold text-gray-500 uppercase">CPF</label>
-                        <input type="text" id="client-cpf" placeholder="000.000.000-00" class="w-full p-3 border rounded-lg bg-gray-50">
-                    </div>
+                    
                     <div class="col-span-2">
-                        <label class="block text-xs font-bold text-gray-500 uppercase">Endereço</label>
+                        <label class="block text-xs font-bold text-gray-500 uppercase">Cidade</label>
                         <input type="text" id="client-address" class="w-full p-3 border rounded-lg bg-gray-50">
                     </div>
                     <div class="col-span-2 md:col-span-1">
@@ -420,7 +403,7 @@
 
                     <div class="col-span-2 mt-4">
                         <button type="submit" id="btn-confirm" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg transition-transform transform hover:scale-[1.01] flex items-center justify-center gap-3">
-                            <span>✅ Confirmar no WhatsApp</span>
+                            <span>✅ Confirmar Agendamento</span>
                         </button>
                         <p class="text-xs text-center text-gray-400 mt-2">Ao clicar, você será redirecionado para enviar os dados.</p>
                     </div>
@@ -432,9 +415,10 @@
     </main>
 
     <footer class="bg-slate-900 text-slate-400 py-8 text-center mt-12">
-        <p class="text-sm">CLINILAB &copy; 2026. Todos os direitos reservados.</p>
+        <p class="text-sm">Consultorio Olharis &copy; 2026. Todos os direitos reservados.</p>
     </footer>
 
 </body>
 
 </html>
+
