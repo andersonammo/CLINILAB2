@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CONSULTORIO OLHARYS - Sua Saúde Visual</title>
+    <title>CONSULTÓRIO OLHARYS - Sua Saúde Visual</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,412 +13,325 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // -----------------------------------------------------------
-        // CONFIGURAÇÃO FIREBASE - COLE SUAS CHAVES AQUI
-        // -----------------------------------------------------------
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        // Se estiver rodando localmente sem as variáveis de ambiente, descomente e preencha abaixo:
-        /*
-        const firebaseConfig = {
-            apiKey: "SUA_API_KEY",
-            authDomain: "SEU_PROJETO.firebaseapp.com",
-            projectId: "SEU_PROJETO",
-            storageBucket: "...",
-            messagingSenderId: "...",
-            appId: "..."
-        };
-        */
-        const appId = 'clinilab-2026-v1';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'olharys-2026-v4';
 
         let db, auth;
 
         async function initSystem() {
             if (!firebaseConfig.apiKey) {
-                console.warn("Firebase não configurado. O agendamento não salvará bloqueios.");
+                console.warn("Firebase não configurado.");
                 return;
             }
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
-            await signInAnonymously(auth);
-            console.log("Sistema Conectado");
+
+            // Autenticação robusta conforme regras
+            const initAuth = async () => {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            };
+            await initAuth();
         }
         initSystem();
 
-        // Variáveis Globais
         window.selectedProf = null;
         window.selectedDate = null;
         window.selectedTime = null;
-        window.db = db; // Expor para funções globais
 
-        // Profissionais
         const professionals = [
-            { id: 'cleide', name: 'Cleide Rosa', role: 'Optometrista', price: 120.00 },
-            { id: 'joao', name: 'Joao Carlos', role: 'Optometrista', price: 120.00 },
-            { id: 'guilherme', name: 'Guilherme Arantes', role: 'Optometrista', price: 120.00 },
-            { id: 'eduardo', name: 'Dr. Eduardo Sodré', role: 'Oftalmologista', price: 180.00 }
+            { id: 'optometrista', name: 'OPTOMETRISTA', role: 'Exame de Vista', price: 120.00, icon: '👁️' },
+            { id: 'oftalmologista', name: 'OFTALMOLOGISTA', role: 'Consulta Médica', price: 150.00, icon: '👨🏻‍⚕️' }
         ];
 
-        // Feriados 2026 (Exemplo de principais feriados nacionais)
         const holidays2026 = [
-            '2026-01-01', // Ano Novo
-            '2026-02-17', // Carnaval
-            '2026-04-03', // Sexta Santa
-            '2026-04-21', // Tiradentes
-            '2026-05-01', // Trabalho
-            '2026-06-04', // Corpus Christi
-            '2026-09-07', // Independência
-            '2026-10-12', // Padroeira
-            '2026-11-02', // Finados
-            '2026-11-15', // República
-            '2026-12-25'  // Natal
+            '2026-01-01', '2026-02-17', '2026-04-03', '2026-04-21', 
+            '2026-05-01', '2026-06-04', '2026-09-07', '2026-10-12', 
+            '2026-11-02', '2026-11-15', '2026-12-25'
         ];
-
-        // --- FUNÇÕES DE LÓGICA ---
 
         window.selectProfessional = (id) => {
             window.selectedProf = professionals.find(p => p.id === id);
-            
-            // UI Update
-            document.querySelectorAll('.prof-card').forEach(el => el.classList.remove('ring-4', 'ring-blue-500', 'bg-blue-50'));
-            document.getElementById(`card-${id}`).classList.add('ring-4', 'ring-blue-500', 'bg-blue-50');
-            
+            document.querySelectorAll('.prof-card').forEach(el => el.classList.remove('ring-4', 'ring-teal-500', 'bg-teal-50'));
+            document.getElementById(`card-${id}`).classList.add('ring-4', 'ring-teal-500', 'bg-teal-50');
             document.getElementById('step-2').classList.remove('hidden');
             document.getElementById('step-2').scrollIntoView({ behavior: 'smooth' });
-            
-            // Reset Date if exists
             if(window.selectedDate) window.loadSlots();
         };
 
         window.handleDateChange = () => {
             const input = document.getElementById('date-input');
-            const date = new Date(input.value + 'T00:00:00'); // Force local time
-            
-            // Validações de Bloqueio (Domingo, Feriado)
-            const dayOfWeek = date.getDay(); // 0 = Domingo
+            const date = new Date(input.value + 'T00:00:00');
+            const dayOfWeek = date.getDay();
             const dateString = input.value;
-
             const errorEl = document.getElementById('date-error');
             errorEl.classList.add('hidden');
-            document.getElementById('slots-container').innerHTML = '';
-
             if (dayOfWeek === 0) {
                 errorEl.innerText = "Não atendemos aos Domingos.";
                 errorEl.classList.remove('hidden');
                 return;
             }
-
             if (holidays2026.includes(dateString)) {
                 errorEl.innerText = "Esta data é um feriado nacional.";
                 errorEl.classList.remove('hidden');
                 return;
             }
-
             window.selectedDate = dateString;
             window.loadSlots();
         };
 
         window.loadSlots = async () => {
-            if(!window.selectedProf || !window.selectedDate) return;
-
+            if(!window.selectedProf || !window.selectedDate || !db) return;
             const container = document.getElementById('slots-container');
             container.innerHTML = '<p class="text-gray-500 col-span-3 text-center">Carregando horários...</p>';
-
-            // Horários Base: 08:00 as 18:00 (Fim do último atendimento 17:30)
+            
             const slots = [];
             for (let h = 8; h < 18; h++) {
                 slots.push(`${h < 10 ? '0'+h : h}:00`);
                 slots.push(`${h < 10 ? '0'+h : h}:30`);
             }
-
-            // Regra Sábado (Bloqueio após 13:00)
             const dateObj = new Date(window.selectedDate + 'T00:00:00');
-            if (dateObj.getDay() === 6) { // Sábado
-                // Remove slots após 12:30 (para terminar 13:00)
+            if (dateObj.getDay() === 6) { // Sábado atende até 13h
                 const saturdayLimitIndex = slots.indexOf("13:00");
-                if (saturdayLimitIndex > -1) {
-                    slots.splice(saturdayLimitIndex); 
-                }
+                if (saturdayLimitIndex > -1) slots.splice(saturdayLimitIndex); 
             }
 
-            // Busca agendamentos no Firebase
             let takenSlots = [];
-            if (window.db) {
-                // ID do documento no banco: PROFISSIONAL_DATA_HORA
-                // Vamos buscar todos documentos que começam com PROFISSIONAL_DATA
-                try {
-                    const q = query(
-                        collection(window.db, 'appointments'),
-                        where("profId", "==", window.selectedProf.id),
-                        where("date", "==", window.selectedDate)
-                    );
-                    const querySnapshot = await getDocs(q);
-                    querySnapshot.forEach((doc) => {
-                        takenSlots.push(doc.data().time);
-                    });
-                } catch (e) {
-                    console.error("Erro ao buscar agenda:", e);
-                }
+            try {
+                const q = query(
+                    collection(db, 'artifacts', appId, 'public', 'data', 'appointments'), 
+                    where("profId", "==", window.selectedProf.id), 
+                    where("date", "==", window.selectedDate)
+                );
+                const querySnapshot = await getDocs(q);
+                querySnapshot.forEach((doc) => takenSlots.push(doc.data().time));
+            } catch (e) { 
+                console.error("Erro ao buscar horários:", e); 
             }
 
-            // Renderiza
             container.innerHTML = '';
             const isAdminMode = document.getElementById('admin-toggle').checked;
-
+            
             slots.forEach(time => {
                 const isTaken = takenSlots.includes(time);
                 const btn = document.createElement('button');
-                btn.className = `p-3 rounded-lg text-sm font-bold border transition-all ${
-                    isTaken 
-                    ? 'bg-red-100 text-red-400 cursor-not-allowed border-red-200' 
-                    : 'bg-white hover:bg-blue-500 hover:text-white border-gray-200 text-gray-700'
-                }`;
-                
+                btn.className = `p-3 rounded-lg text-sm font-bold border transition-all ${isTaken ? 'bg-red-100 text-red-400 cursor-not-allowed border-red-200' : 'bg-white hover:bg-teal-500 hover:text-white border-gray-200 text-gray-700'}`;
                 if (isTaken) {
                     btn.innerText = isAdminMode ? `${time} (X)` : "Ocupado";
-                    btn.disabled = !isAdminMode; // Admin pode clicar para desbloquear (lógica futura)
-                    if(isAdminMode) {
-                        btn.onclick = () => alert("Para desbloquear, entre em contato com o suporte técnico.");
-                    }
+                    btn.disabled = !isAdminMode;
                 } else {
                     btn.innerText = time;
                     btn.onclick = () => window.selectTime(time, btn);
                 }
-                
                 container.appendChild(btn);
             });
-            
             document.getElementById('step-3').classList.remove('hidden');
         };
 
         window.selectTime = (time, btnElement) => {
             window.selectedTime = time;
-            
-            // Visual Highlight
             document.querySelectorAll('#slots-container button').forEach(b => {
                 if(!b.disabled) b.className = 'p-3 rounded-lg text-sm font-bold border bg-white border-gray-200 text-gray-700';
             });
-            btnElement.className = 'p-3 rounded-lg text-sm font-bold border bg-blue-600 text-white border-blue-600 shadow-lg scale-105';
+            btnElement.className = 'p-3 rounded-lg text-sm font-bold border bg-teal-600 text-white border-teal-600 shadow-lg scale-105';
             
-            // Se modo admin estiver ativado, bloqueia imediatamente
             const isAdminMode = document.getElementById('admin-toggle').checked;
             if (isAdminMode) {
-                window.blockSlotManual();
+                // Lógica de bloqueio rápido para admin
+                if(confirm(`Deseja bloquear o horário ${time}?`)) {
+                    window.saveAppointment({ name: 'BLOQUEADO', phone: 'N/A', city: 'N/A' }, true);
+                }
             } else {
                 document.getElementById('step-4').classList.remove('hidden');
                 document.getElementById('step-4').scrollIntoView({ behavior: 'smooth' });
             }
         };
 
-        // Bloqueio Manual (Admin)
-        window.blockSlotManual = async () => {
-            if(!confirm(`Deseja bloquear a agenda de ${window.selectedProf.name} às ${window.selectedTime}?`)) return;
-            
-            await window.saveAppointment({
-                name: "BLOQUEIO MANUAL",
-                phone: "ADMIN",
-                cpf: "ADMIN",
-                address: "ADMIN"
-            }, true);
-            
-            alert("Horário Bloqueado com Sucesso!");
-            window.loadSlots(); // Recarrega
-        };
-
-        // Finalizar Agendamento
         window.finishBooking = async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-confirm');
-            
             const clientData = {
                 name: document.getElementById('client-name').value,
                 phone: document.getElementById('client-phone').value,
-                address: document.getElementById('client-address').value
+                city: document.getElementById('client-city').value
             };
-
-            if(!clientData.name || !clientData.phone) {
-                alert("Preencha pelo menos Nome e Telefone.");
-                return;
-            }
-
-            btn.innerText = "Processando...";
+            btn.innerText = "Agendando...";
             btn.disabled = true;
 
-            // 1. Salvar no Firebase
             await window.saveAppointment(clientData, false);
-
-            // 2. Redirecionar WhatsApp
-            const msg = `Olá, gostaria de confirmar meu agendamento no CONSULTÓRIO OLHARYS.%0A%0A*Profissional:* ${window.selectedProf.name} (${window.selectedProf.role})%0A*Valor:* R$ ${window.selectedProf.price.toFixed(2)}%0A*Data:* ${window.selectedDate.split('-').reverse().join('/')}%0A*Horário:* ${window.selectedTime}%0A%0A*Meus Dados:*%0ANome: ${clientData.name}%0ACPF: ${clientData.cpf}%0ATelefone: ${clientData.phone}%0AEndereço: ${clientData.address}`;
             
-            window.open(`https://wa.me/5544991837620?text=${msg}`, '_blank');
-            
-            // Reset UI
-            alert("Agendamento iniciado! Finalize a conversa no WhatsApp.");
+            const msg = `Olá, quero agendar no CONSULTÓRIO OLHARYS.%0A%0A*Tipo:* ${window.selectedProf.name}%0A*Data:* ${window.selectedDate.split('-').reverse().join('/')}%0A*Horário:* ${window.selectedTime}%0A%0ANome: ${clientData.name}`;
+            window.open(`https://wa.me/5541996509734?text=${msg}`, '_blank');
             location.reload();
         };
 
         window.saveAppointment = async (clientData, isBlock) => {
-            if (!window.db) return;
-            
+            if (!db) return;
             const docId = `${window.selectedProf.id}_${window.selectedDate}_${window.selectedTime}`;
-            
             try {
-                await setDoc(doc(window.db, 'appointments', docId), {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'appointments', docId), {
                     profId: window.selectedProf.id,
-                    profName: window.selectedProf.name,
                     date: window.selectedDate,
                     time: window.selectedTime,
                     client: clientData,
                     type: isBlock ? 'block' : 'appointment',
                     createdAt: new Date().toISOString()
                 });
-            } catch (e) {
-                console.error("Erro ao salvar:", e);
-                alert("Houve um erro ao reservar o horário. Tente novamente.");
-            }
+                if(isBlock) location.reload();
+            } catch (e) { console.error("Erro ao salvar:", e); }
         };
-
     </script>
 
     <style>
-        body { font-family: 'Montserrat', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Montserrat', sans-serif; background-color: #6CC0BA; }
         .hero-pattern {
-            background-color: #0f172a;
-            background-image: url("https://images.unsplash.com/photo-1623875323214-996459392e21?q=80&w=1920&auto=format&fit=crop");
+            background-color: #0d5c56;
+            background-image: url("https://images.unsplash.com/photo-1570222094114-2819cd595435?q=80&w=1920&auto=format&fit=crop");
             background-size: cover;
             background-position: center;
             background-blend-mode: overlay;
         }
-        /* Efeito de vidro */
         .glass {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .eye-icon {
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.2));
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            filter: invert(0.5) sepia(1) saturate(5) hue-rotate(145deg);
         }
     </style>
 </head>
 <body class="text-slate-800">
 
-    <!-- HERO SECTION -->
-    <header class="hero-pattern h-[500px] flex items-center justify-center relative shadow-2xl">
-        <div class="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent opacity-90"></div>
+    <!-- CABEÇALHO -->
+    <header class="hero-pattern h-[550px] flex items-center justify-center relative shadow-2xl">
+        <div class="absolute inset-0 bg-gradient-to-t from-[#6CC0BA] to-transparent opacity-90"></div>
         
         <div class="container mx-auto px-6 relative z-10 text-center text-white">
-            <h2 class="text-lg font-semibold tracking-widest text-blue-400 mb-2">BEM-VINDO À</h2>
-            <h1 class="text-6xl font-bold mb-4 tracking-tight">CONSULTÓRIO OLHARYS</h1>
-            <p class="text-xl font-light italic opacity-90 mb-8">"Sua saúde visual é a nossa prioridade"</p>
-            <a href="#agendamento" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all transform hover:scale-105">
-                Agendar Consulta
+            <h2 class="text-lg font-semibold tracking-widest text-teal-100 mb-2 uppercase">Seja Bem-vindo ao</h2>
+            <h1 class="text-5xl md:text-7xl font-bold tracking-tight">CONSULTÓRIO OLHARYS</h1>
+            
+            <!-- ÍCONE DE OLHO ABAIXO DO NOME -->
+            <div class="flex justify-center mt-6 mb-6">
+                <svg class="eye-icon w-20 h-20 md:w-24 md:h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+            </div>
+
+            <p class="text-xl font-light italic opacity-90 mb-8 max-w-lg mx-auto">"Sua saúde visual é a nossa prioridade em cada detalhe."</p>
+            
+            <a href="#agendamento" class="bg-white hover:bg-teal-50 text-teal-700 font-bold py-4 px-10 rounded-full shadow-lg transition-all transform hover:scale-105 border-2 border-white inline-block">
+                Agendar Agora
             </a>
         </div>
     </header>
 
-    <!-- ADMIN TOGGLE (Discreto) -->
-    <div class="bg-slate-800 text-white py-2 px-6 flex justify-end items-center gap-3 text-xs">
-        <span>Modo Admin (Fechar Agenda):</span>
+    <!-- ADMIN TOGGLE (Para controle interno) -->
+    <div class="bg-teal-900 text-white py-2 px-6 flex justify-end items-center gap-3 text-xs">
+        <span>Admin (Bloquear Horário):</span>
         <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="admin-toggle" class="sr-only peer" onchange="window.loadSlots()">
-            <div class="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
+            <div class="w-9 h-5 bg-teal-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-500"></div>
         </label>
     </div>
 
     <!-- MAIN APP -->
-    <main id="agendamento" class="container mx-auto px-4 py-12 -mt-20 relative z-20">
-        
+    <main id="agendamento" class="container mx-auto px-4 py-12 -mt-16 relative z-20">
         <div class="glass rounded-3xl shadow-2xl overflow-hidden p-8 max-w-4xl mx-auto">
             
-            <!-- STEP 1: PROFISSIONAL -->
+            <!-- ETAPA 1: PROFISSIONAL -->
             <div class="mb-10">
                 <div class="flex items-center gap-4 mb-6">
-                    <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">1</div>
-                    <h3 class="text-xl font-bold text-slate-800">Escolha o Profissional</h3>
+                    <div class="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold">1</div>
+                    <h3 class="text-xl font-bold text-slate-800">Tipo de Atendimento</h3>
                 </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <!-- Cards gerados dinamicamente via JS -->
-                    <div id="card-guilherme" onclick="selectProfessional('guilherme')" class="prof-card cursor-pointer border rounded-xl p-4 hover:shadow-lg transition-all text-center">
-                        <div class="w-16 h-16 bg-slate-200 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl">👨🏽‍⚕️</div>
-                        <p class="text-xs text-slate-500 uppercase">Agendamento com Optometrista</p>
-                        <p class="text-blue-600 font-bold mt-2"> a partir de R$ 120,00</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div id="card-optometrista" onclick="selectProfessional('optometrista')" class="prof-card cursor-pointer border-2 border-teal-100 rounded-2xl p-6 hover:shadow-xl transition-all text-center group bg-white">
+                        <div class="w-16 h-16 bg-teal-50 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">👁️</div>
+                        <h4 class="text-lg font-bold">OPTOMETRISTA</h4>
+                        <p class="text-sm text-gray-500 mb-2">Exame de Vista</p>
+                        <div class="mt-2 text-teal-700 font-bold text-xl">R$ 120,00</div>
                     </div>
-                    <div id="card-eduardo" onclick="selectProfessional('eduardo')" class="prof-card cursor-pointer border rounded-xl p-4 hover:shadow-lg transition-all text-center border-blue-100 bg-blue-50/50">
-                        <div class="w-16 h-16 bg-blue-100 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl">👨🏻‍⚕️</div>
-                        
-                        <p class="text-xs text-slate-500 uppercase">Oftalmologista</p>
-                        <p class="text-blue-600 font-bold mt-2">a partir de R$ 180,00</p>
+                    <div id="card-oftalmologista" onclick="selectProfessional('oftalmologista')" class="prof-card cursor-pointer border-2 border-teal-100 rounded-2xl p-6 hover:shadow-xl transition-all text-center group bg-white">
+                        <div class="w-16 h-16 bg-teal-50 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">👨🏻‍⚕️</div>
+                        <h4 class="text-lg font-bold">OFTALMOLOGISTA</h4>
+                        <p class="text-sm text-gray-500 mb-2">Consulta Médica</p>
+                        <div class="mt-2 text-teal-700 font-bold text-xl">R$ 150,00</div>
                     </div>
                 </div>
             </div>
 
-            <!-- STEP 2: DATA -->
+            <!-- ETAPA 2: DATA -->
             <div id="step-2" class="mb-10 hidden">
                 <div class="flex items-center gap-4 mb-6">
-                    <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">2</div>
-                    <h3 class="text-xl font-bold text-slate-800">Selecione a Data (2026)</h3>
+                    <div class="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold">2</div>
+                    <h3 class="text-xl font-bold text-slate-800">Escolha a Data (2026)</h3>
                 </div>
-                
-                <div class="max-w-xs">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Data da Consulta</label>
-                    <input type="date" id="date-input" onchange="handleDateChange()" min="2026-01-01" max="2026-12-31" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                <div class="max-w-xs mx-auto md:mx-0">
+                    <input type="date" id="date-input" onchange="handleDateChange()" min="2026-01-01" max="2026-12-31" class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none bg-white font-medium shadow-sm">
                     <p id="date-error" class="text-red-500 text-sm mt-2 hidden font-bold"></p>
                 </div>
             </div>
 
-            <!-- STEP 3: HORÁRIO -->
+            <!-- ETAPA 3: HORÁRIOS -->
             <div id="step-3" class="mb-10 hidden">
                 <div class="flex items-center gap-4 mb-6">
-                    <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">3</div>
-                    <h3 class="text-xl font-bold text-slate-800">Horário Disponível</h3>
+                    <div class="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold">3</div>
+                    <h3 class="text-xl font-bold text-slate-800">Selecione o Horário</h3>
                 </div>
-                
-                <div id="slots-container" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
-                    <!-- Slots injetados via JS -->
-                </div>
+                <div id="slots-container" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3"></div>
             </div>
 
-            <!-- STEP 4: DADOS E CONFIRMAÇÃO -->
-            <div id="step-4" class="hidden border-t border-gray-200 pt-8">
+            <!-- ETAPA 4: DADOS FINAIS -->
+            <div id="step-4" class="hidden border-t border-gray-100 pt-8">
                 <div class="flex items-center gap-4 mb-6">
-                    <div class="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center font-bold">4</div>
-                    <h3 class="text-xl font-bold text-slate-800">Seus Dados</h3>
+                    <div class="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold">4</div>
+                    <h3 class="text-xl font-bold text-slate-800">Finalizar Agendamento</h3>
                 </div>
-
-                <form onsubmit="finishBooking(event)" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="col-span-2 md:col-span-1">
-                        <label class="block text-xs font-bold text-gray-500 uppercase">Nome Completo</label>
-                        <input type="text" id="client-name" required class="w-full p-3 border rounded-lg bg-gray-50">
+                <form onsubmit="finishBooking(event)" class="space-y-4">
+                    <input type="text" id="client-name" required placeholder="Nome Completo do Paciente" class="w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-teal-500 shadow-sm">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="tel" id="client-phone" required placeholder="WhatsApp com DDD" class="p-4 border rounded-xl outline-none focus:ring-2 focus:ring-teal-500 shadow-sm">
+                        <input type="text" id="client-city" placeholder="Sua Cidade" class="p-4 border rounded-xl outline-none focus:ring-2 focus:ring-teal-500 shadow-sm">
                     </div>
-                    
-                    <div class="col-span-2">
-                        <label class="block text-xs font-bold text-gray-500 uppercase">Cidade</label>
-                        <input type="text" id="client-address" class="w-full p-3 border rounded-lg bg-gray-50">
-                    </div>
-                    <div class="col-span-2 md:col-span-1">
-                        <label class="block text-xs font-bold text-gray-500 uppercase">Telefone / WhatsApp</label>
-                        <input type="tel" id="client-phone" required placeholder="(41) 99999-9999" class="w-full p-3 border rounded-lg bg-gray-50">
-                    </div>
-
-                    <div class="col-span-2 mt-4">
-                        <button type="submit" id="btn-confirm" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg transition-transform transform hover:scale-[1.01] flex items-center justify-center gap-3">
-                            <span>✅ Confirmar Agendamento</span>
-                        </button>
-                        <p class="text-xs text-center text-gray-400 mt-2">Ao clicar, você será redirecionado para enviar os dados.</p>
-                    </div>
+                    <button type="submit" id="btn-confirm" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-5 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 text-lg mt-4">
+                        ✅ Confirmar Agendamento no WhatsApp
+                    </button>
+                    <p class="text-xs text-center text-gray-400 mt-2">Você será redirecionado para o WhatsApp da clínica para validação final.</p>
                 </form>
             </div>
 
         </div>
-
     </main>
 
-    <footer class="bg-slate-900 text-slate-400 py-8 text-center mt-12">
-        <p class="text-sm">Consultorio Olharis &copy; 2026. Todos os direitos reservados.</p>
+    <!-- RODAPÉ -->
+    <footer class="bg-teal-900 text-teal-100 py-12 text-center mt-12">
+        <div class="container mx-auto px-6">
+            <svg class="w-12 h-12 text-teal-500 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            </svg>
+            <p class="text-lg font-bold tracking-widest uppercase">Consultório Olharys</p>
+            <p class="text-sm opacity-60 mt-2 italic">Qualidade de visão ao seu alcance.</p>
+            <div class="mt-6 pt-6 border-t border-teal-800 text-xs opacity-40">
+                &copy; 2026 Todos os direitos reservados.
+            </div>
+        </div>
     </footer>
 
 </body>
-
 </html>
+
 
