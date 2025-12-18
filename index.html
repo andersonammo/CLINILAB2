@@ -6,55 +6,88 @@
     <title>Consultório Olharys - Agendamento</title>
     <style>
         :root {
-            --primary: #2563eb;
-            --secondary: #1e40af;
-            --background: #f3f4f6;
-            --text: #1f2937;
+            /* === Nova Paleta Moderna Verde Água === */
+            --brand-teal: #00a896;       /* Cor principal vibrante */
+            --brand-teal-dark: #008c7d;  /* Tom um pouco mais escuro para contrastes */
+            --brand-teal-light: #e0f2f1; /* Tom muito claro para fundos de seleção */
+            
+            /* Redefinindo as cores do sistema para usar a nova paleta */
+            --primary: var(--brand-teal);
+            --secondary: var(--brand-teal-dark);
+            
+            /* Fundo geral da página com um tom sutil */
+            --background: #f0f7f6; 
+            
+            --text: #2c3e50;    /* Texto cinza escuro para boa leitura */
             --white: #ffffff;
-            --error: #ef4444;
-            --success: #10b981;
-            --disabled: #9ca3af;
+            --error: #e74c3c;
+            --success: #27ae60;
+            --disabled: #95a5a6;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* Usando uma fonte mais moderna se disponível */
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
         body {
             background-color: var(--background);
+            /* Gradiente sutil no fundo da página inteira */
+            background-image: linear-gradient(to bottom, var(--brand-teal-light) 0%, var(--background) 100%);
+            background-attachment: fixed;
             color: var(--text);
             line-height: 1.6;
         }
 
+        /* === Novo Header Moderno === */
         header {
-            background-color: var(--white);
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            /* Gradiente impactante na capa */
+            background: linear-gradient(135deg, var(--brand-teal), var(--brand-teal-dark));
+            padding: 4rem 2rem; /* Mais espaçoso */
             text-align: center;
+            color: var(--white);
+            margin-bottom: 3rem;
+            /* Sombra colorida suave */
+            box-shadow: 0 10px 20px -10px rgba(0, 168, 150, 0.5);
         }
 
         header h1 {
-            color: var(--primary);
-            font-size: 1.8rem;
+            color: var(--white);
+            font-size: 2.8rem;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
+        header p {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        /* === Estilos do Conteúdo Principal === */
         main {
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 1rem;
+            max-width: 850px;
+            margin: -2rem auto 4rem; /* Sobe um pouco sobre o header */
+            padding: 0 1.5rem;
+            position: relative;
+            z-index: 10;
         }
 
         .step-container {
             background: var(--white);
-            border-radius: 8px;
-            padding: 2rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border-radius: 16px; /* Bordas mais arredondadas */
+            padding: 2.5rem;
+            /* Sombra mais profunda para destacar o cartão branco */
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
             margin-bottom: 2rem;
-            display: none; /* Escondido por padrão */
-            animation: fadeIn 0.5s ease-in-out;
+            display: none;
+            border-top: 5px solid var(--brand-teal); /* Detalhe colorido no topo */
+            animation: fadeIn 0.6s ease-in-out;
         }
 
         .step-container.active {
@@ -62,160 +95,241 @@
         }
 
         h2 {
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
             color: var(--secondary);
-            border-bottom: 2px solid var(--background);
-            padding-bottom: 0.5rem;
+            font-size: 1.5rem;
+            position: relative;
+        }
+        
+        /* Pequeno sublinhado decorativo no título H2 */
+        h2::after {
+            content: '';
+            display: block;
+            width: 60px;
+            height: 3px;
+            background: var(--brand-teal);
+            margin-top: 0.5rem;
+            border-radius: 2px;
         }
 
-        /* Passo 1: Seleção de Serviço */
+        /* Passo 1: Seleção de Serviço (Cartões Melhorados) */
         .service-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
         }
 
         .card {
-            border: 2px solid var(--background);
-            border-radius: 8px;
-            padding: 1.5rem;
+            background-color: var(--white);
+            border: 2px solid transparent; /* Borda transparente por padrão */
+            border-radius: 12px;
+            padding: 2rem;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
 
         .card:hover {
-            border-color: var(--primary);
-            transform: translateY(-2px);
+            border-color: var(--brand-teal);
+            transform: translateY(-7px); /* Elevação maior no hover */
+            box-shadow: 0 12px 20px rgba(0, 168, 150, 0.15); /* Sombra colorida no hover */
         }
 
         .card.selected {
-            border-color: var(--primary);
-            background-color: #eff6ff;
+            border-color: var(--brand-teal);
+            /* Usando o tom claro de verde água para o fundo selecionado */
+            background-color: var(--brand-teal-light); 
+            box-shadow: 0 4px 12px rgba(0, 168, 150, 0.2);
+        }
+        
+        .card h3 {
+            color: var(--secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .card p {
+            color: #666;
+            margin-bottom: 1rem;
         }
 
         .price {
-            display: block;
-            font-size: 1.25rem;
+            display: inline-block;
+            font-size: 1.2rem;
             font-weight: bold;
-            color: var(--primary);
-            margin-top: 0.5rem;
+            color: var(--white);
+            background-color: var(--brand-teal);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            margin-top: 1rem;
+        }
+        
+        /* Quando selecionado, o preço muda para combinar com o fundo claro */
+        .card.selected .price {
+             background-color: var(--brand-teal-dark);
         }
 
         /* Passo 2: Calendário e Horários */
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
         }
 
         label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.8rem;
             font-weight: 600;
+            color: var(--secondary);
         }
 
         input[type="date"], input[type="text"], input[type="tel"] {
             width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
             font-size: 1rem;
+            transition: border-color 0.3s;
+            background-color: #fcfcfc;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: var(--brand-teal);
+            background-color: var(--white);
         }
 
         .time-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-            gap: 0.8rem;
-            margin-top: 1rem;
+            grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
         }
 
         .time-slot {
-            padding: 0.5rem;
+            padding: 0.8rem 0.5rem;
             background: var(--white);
-            border: 1px solid var(--primary);
-            border-radius: 4px;
+            border: 2px solid var(--brand-teal-light);
+            border-radius: 8px;
             text-align: center;
             cursor: pointer;
-            color: var(--primary);
+            color: var(--brand-teal-dark);
             font-weight: 600;
+            transition: all 0.2s;
         }
 
-        .time-slot:hover {
-            background: var(--primary);
+        .time-slot:hover:not(.disabled) {
+            background: var(--brand-teal);
             color: var(--white);
+            border-color: var(--brand-teal);
+            transform: scale(1.05);
         }
 
         .time-slot.selected {
-            background: var(--primary);
+            background: var(--brand-teal);
             color: var(--white);
-            box-shadow: 0 0 0 2px var(--secondary);
+            border-color: var(--brand-teal-dark);
+            box-shadow: 0 4px 10px rgba(0, 168, 150, 0.3);
         }
 
         .time-slot.disabled {
-            background-color: #e5e7eb;
-            border-color: #d1d5db;
+            background-color: #f1f5f9;
+            border-color: #e2e8f0;
             color: var(--disabled);
             cursor: not-allowed;
             text-decoration: line-through;
+            opacity: 0.7;
         }
 
         /* Botões */
         .btn-group {
             display: flex;
             justify-content: space-between;
-            margin-top: 2rem;
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #eee;
         }
 
         button {
-            padding: 0.75rem 1.5rem;
+            padding: 0.9rem 2rem;
             border: none;
-            border-radius: 4px;
+            border-radius: 50px; /* Botões arredondados */
             cursor: pointer;
             font-size: 1rem;
-            font-weight: bold;
-            transition: background 0.2s;
+            font-weight: 700;
+            transition: all 0.3s;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        button:hover {
+             transform: translateY(-2px);
+             box-shadow: 0 7px 14px rgba(0,0,0,0.15);
         }
 
         .btn-next {
-            background-color: var(--success);
+            background: linear-gradient(to right, var(--brand-teal), var(--brand-teal-dark));
             color: var(--white);
         }
         
         .btn-next:hover {
-            background-color: #059669;
+             filter: brightness(110%);
         }
 
         .btn-back {
-            background-color: #9ca3af;
-            color: var(--white);
+            background-color: #fff;
+            color: #7f8c8d;
+            border: 2px solid #bdc3c7;
+            box-shadow: none;
+        }
+        
+        .btn-back:hover {
+             background-color: #f9f9f9;
+             border-color: #95a5a6;
+             color: #34495e;
         }
 
         /* Mensagens de Erro */
         .error-msg {
             color: var(--error);
-            font-size: 0.875rem;
-            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            margin-top: 0.8rem;
             display: none;
+            font-weight: 500;
+            padding: 0.5rem;
+            background-color: #fff5f5;
+            border-radius: 4px;
+            border-left: 4px solid var(--error);
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         /* Resumo final */
         .summary-box {
-            background: #f8fafc;
-            padding: 1rem;
-            border-radius: 6px;
-            margin-bottom: 1.5rem;
-            border-left: 4px solid var(--primary);
+            background: var(--brand-teal-light);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            border: 2px solid var(--brand-teal);
         }
         .summary-item {
-            margin-bottom: 0.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dashed rgba(0, 168, 150, 0.3);
+            padding-bottom: 0.5rem;
+        }
+        .summary-item:last-child {
+            border-bottom: none;
         }
         .summary-label {
-            font-weight: bold;
-            color: var(--secondary);
+            font-weight: 600;
+            color: var(--brand-teal-dark);
+        }
+        .summary-value {
+             font-weight: 700;
+             color: var(--text);
         }
 
     </style>
@@ -224,80 +338,92 @@
 
 <header>
     <h1>Consultório Olharys</h1>
-    <p>Excelência em visão</p>
+    <p>Sua visão é a nossa prioridade. Agende sua consulta com excelência.</p>
 </header>
 
 <main>
     <div id="step1" class="step-container active">
         <h2>1. Escolha o Profissional</h2>
+        <p style="margin-bottom: 2rem; color: #666;">Selecione o tipo de atendimento que você precisa hoje:</p>
         <div class="service-grid">
             <div class="card" onclick="selectService('Optometrista', 120, this)">
                 <h3>Optometrista</h3>
-                <p>Exame de vista completo</p>
+                <p>Exame de vista completo para prescrição de óculos e lentes.</p>
                 <span class="price">A partir de R$ 120,00</span>
             </div>
             <div class="card" onclick="selectService('Oftalmologista', 150, this)">
                 <h3>Oftalmologista</h3>
-                <p>Saúde ocular e diagnósticos</p>
+                <p>Avaliação médica da saúde ocular, diagnósticos e tratamentos.</p>
                 <span class="price">A partir de R$ 150,00</span>
             </div>
         </div>
-        <div class="error-msg" id="error-step1">Por favor, selecione um profissional.</div>
+        <div class="error-msg" id="error-step1">Por favor, clique em um dos cartões acima para selecionar.</div>
         <div class="btn-group" style="justify-content: flex-end;">
-            <button class="btn-next" onclick="goToStep(2)">Continuar</button>
+            <button class="btn-next" onclick="goToStep(2)">Continuar Agendamento</button>
         </div>
     </div>
 
     <div id="step2" class="step-container">
         <h2>2. Data e Horário (2026)</h2>
         <div class="form-group">
-            <label for="dateInput">Selecione uma data:</label>
+            <label for="dateInput">Selecione a melhor data para você:</label>
             <input type="date" id="dateInput" min="2026-01-01" max="2026-12-31">
             <div class="error-msg" id="date-error"></div>
         </div>
 
         <div id="timeContainer" style="display:none;">
-            <label>Horários disponíveis:</label>
-            <p style="font-size: 0.9em; color: #666; margin-bottom: 0.5rem;">Atendimento das 08:00 às 18:00 (Almoço 12:00-14:00)</p>
+            <label style="margin-bottom: 0;">Horários disponíveis:</label>
+            <p style="font-size: 0.95em; color: #7f8c8d; margin-bottom: 1.5rem;">Atendimento das 08:00 às 18:00 (Intervalo de almoço das 12h às 14h)</p>
             <div class="time-grid" id="timeGrid">
                 </div>
-            <div class="error-msg" id="time-error">Selecione um horário.</div>
+            <div class="error-msg" id="time-error">Por favor, clique em um horário disponível.</div>
         </div>
 
         <div class="btn-group">
-            <button class="btn-back" onclick="goToStep(1)">Voltar</button>
-            <button class="btn-next" onclick="goToStep(3)">Continuar</button>
+            <button class="btn-back" onclick="goToStep(1)">← Voltar</button>
+            <button class="btn-next" onclick="goToStep(3)">Continuar →</button>
         </div>
     </div>
 
     <div id="step3" class="step-container">
-        <h2>3. Seus Dados</h2>
+        <h2>3. Seus Dados e Confirmação</h2>
         
         <div class="summary-box">
-            <div class="summary-item"><span class="summary-label">Profissional:</span> <span id="sum-pro"></span></div>
-            <div class="summary-item"><span class="summary-label">Data:</span> <span id="sum-date"></span></div>
-            <div class="summary-item"><span class="summary-label">Horário:</span> <span id="sum-time"></span></div>
-            <div class="summary-item"><span class="summary-label">Valor:</span> <span id="sum-price"></span></div>
+            <h3 style="color: var(--brand-teal-dark); margin-bottom: 1rem;">Resumo do Agendamento</h3>
+            <div class="summary-item">
+                <span class="summary-label">Profissional:</span> <span class="summary-value" id="sum-pro"></span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Data:</span> <span class="summary-value" id="sum-date"></span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Horário:</span> <span class="summary-value" id="sum-time"></span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Valor Estimado:</span> <span class="summary-value" style="color: var(--brand-teal-dark); font-size: 1.2em;" id="sum-price"></span>
+            </div>
         </div>
+
+        <p style="margin-bottom: 1.5rem; font-weight: 600;">Preencha seus dados para finalizar:</p>
 
         <div class="form-group">
             <label for="name">Nome Completo</label>
-            <input type="text" id="name" placeholder="Digite seu nome">
+            <input type="text" id="name" placeholder="Ex: João da Silva">
         </div>
         <div class="form-group">
             <label for="city">Cidade</label>
-            <input type="text" id="city" placeholder="Sua cidade">
+            <input type="text" id="city" placeholder="Ex: Maringá">
         </div>
         <div class="form-group">
             <label for="phone">Telefone (WhatsApp)</label>
-            <input type="tel" id="phone" placeholder="(XX) XXXXX-XXXX">
+            <input type="tel" id="phone" placeholder="(XX) 9XXXX-XXXX">
         </div>
 
-        <div class="error-msg" id="form-error">Preencha todos os campos corretamente.</div>
+        <div class="error-msg" id="form-error">Por favor, preencha todos os campos obrigatórios.</div>
 
         <div class="btn-group">
-            <button class="btn-back" onclick="goToStep(2)">Voltar</button>
-            <button class="btn-next" onclick="finishBooking()">Concluir Agendamento</button>
+            <button class="btn-back" onclick="goToStep(2)">← Voltar</button>
+            <button class="btn-next" onclick="finishBooking()">Concluir Agendamento via WhatsApp</button>
         </div>
     </div>
 </main>
@@ -341,6 +467,12 @@
         dateInput.max = `${YEAR}-12-31`;
 
         dateInput.addEventListener('change', handleDateChange);
+        
+        // Máscara simples para telefone (opcional, melhora UX)
+        document.getElementById('phone').addEventListener('input', function (e) {
+            let x = e.target.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
+            e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
+        });
     });
 
     // --- Navegação entre Passos ---
@@ -349,6 +481,8 @@
         if (stepNumber === 2) {
             if (!bookingData.service) {
                 document.getElementById('error-step1').style.display = 'block';
+                // Scroll para o erro
+                document.getElementById('error-step1').scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
             document.getElementById('error-step1').style.display = 'none';
@@ -356,54 +490,65 @@
 
         if (stepNumber === 3) {
             if (!bookingData.date || !bookingData.time) {
-                alert("Por favor, selecione data e horário válidos.");
+                // Se tentar avançar sem data/hora, mostra os erros nos campos respectivos
+                if(!bookingData.date) document.getElementById('date-error').innerText = "Selecione uma data.";
+                if(bookingData.date && !bookingData.time) document.getElementById('time-error').style.display = 'block';
                 return;
             }
             updateSummary();
         }
 
-        // Troca de abas
+        // Troca de abas com scroll suave para o topo do container
         document.querySelectorAll('.step-container').forEach(el => el.classList.remove('active'));
-        document.getElementById(`step${stepNumber}`).classList.add('active');
+        const nextStep = document.getElementById(`step${stepNumber}`);
+        nextStep.classList.add('active');
+        nextStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // --- Passo 1: Seleção de Serviço ---
     function selectService(name, price, element) {
         bookingData.service = name;
         bookingData.price = price;
+        document.getElementById('error-step1').style.display = 'none';
         
         // Visual
         document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
         element.classList.add('selected');
         
-        // Resetar horário se mudar serviço (pois os slots dependem do profissional)
+        // Resetar horário se mudar serviço
         bookingData.time = null;
-        renderTimeSlots(); 
+        // Se já estiver na tela 2, atualiza os slots
+        if(document.getElementById('step2').classList.contains('active') && bookingData.date) {
+             renderTimeSlots();
+        }
     }
 
     // --- Passo 2: Lógica de Calendário ---
     function handleDateChange(e) {
         const selectedDate = e.target.value;
-        const dateObj = new Date(selectedDate + 'T00:00:00'); // T00:00 para evitar timezone issues locais
+        if (!selectedDate) return; // Se o usuário limpar o campo
+
+        const dateObj = new Date(selectedDate + 'T00:00:00');
         const dayOfWeek = dateObj.getDay(); // 0 = Dom, 6 = Sab
         const errorDiv = document.getElementById('date-error');
         const timeContainer = document.getElementById('timeContainer');
 
         bookingData.date = null;
+        bookingData.time = null; // Reseta horário ao mudar data
         timeContainer.style.display = 'none';
         errorDiv.style.display = 'none';
         errorDiv.innerText = '';
 
         // 1. Validar Ano
         if (dateObj.getFullYear() !== YEAR) {
-            errorDiv.innerText = "Agendamentos permitidos apenas para 2026.";
+            errorDiv.innerText = `Agendamentos permitidos apenas para o ano de ${YEAR}.`;
             errorDiv.style.display = 'block';
             return;
         }
 
         // 2. Validar Fim de Semana
         if (dayOfWeek === 0 || dayOfWeek === 6) {
-            errorDiv.innerText = "Não atendemos aos sábados e domingos.";
+            errorDiv.innerText = "Nosso consultório não abre aos sábados e domingos.";
             errorDiv.style.display = 'block';
             return;
         }
@@ -418,25 +563,27 @@
         // Data válida
         bookingData.date = selectedDate;
         timeContainer.style.display = 'block';
-        renderTimeSlots();
+        // Pequeno delay para a animação do container aparecer antes de renderizar os slots
+        setTimeout(renderTimeSlots, 100);
     }
 
     function renderTimeSlots() {
-        if (!bookingData.date || !bookingData.service) return;
-
         const grid = document.getElementById('timeGrid');
         grid.innerHTML = '';
+        document.getElementById('time-error').style.display = 'none';
+
+        if (!bookingData.date || !bookingData.service) {
+             grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center;">Selecione um profissional e uma data primeiro.</p>';
+             return;
+        }
         
-        // Gerar horários: 08:00 as 17:00 (última consulta começa as 17h p/ acabar as 18h)
-        // Almoço: 12:00 as 14:00 (bloqueia slots das 12h e 13h)
+        // Horários disponíveis (pulando 12h e 13h)
         const slots = [
             "08:00", "09:00", "10:00", "11:00", 
-            // 12 e 13 almoço
             "14:00", "15:00", "16:00", "17:00"
         ];
 
-        // Recuperar agendamentos já feitos do LocalStorage
-        // Chave storage: "2026-05-10_Optometrista"
+        // Recuperar agendamentos
         const storageKey = `${bookingData.date}_${bookingData.service}`;
         const takenSlots = JSON.parse(localStorage.getItem(storageKey)) || [];
 
@@ -447,9 +594,11 @@
 
             if (takenSlots.includes(time)) {
                 div.classList.add('disabled');
-                div.title = "Horário indisponível";
+                div.title = "Este horário já foi reservado.";
             } else {
                 div.onclick = () => selectTime(time, div);
+                // Marca se já estava selecionado antes
+                if (bookingData.time === time) div.classList.add('selected');
             }
 
             grid.appendChild(div);
@@ -475,8 +624,11 @@
 
         document.getElementById('sum-pro').innerText = bookingData.service;
         document.getElementById('sum-date').innerText = dataFormatada;
-        document.getElementById('sum-time').innerText = bookingData.time;
+        document.getElementById('sum-time').innerText = bookingData.time + ' h';
         document.getElementById('sum-price').innerText = `R$ ${bookingData.price},00`;
+        
+        // Limpa erro do formulário se houver
+        document.getElementById('form-error').style.display = 'none';
     }
 
     function finishBooking() {
@@ -485,45 +637,60 @@
         const phone = document.getElementById('phone').value.trim();
         const errorDiv = document.getElementById('form-error');
 
-        if (!name || !city || !phone) {
+        if (!name || !city || !phone || phone.length < 10) {
+            errorDiv.innerText = "Por favor, preencha nome, cidade e um telefone válido.";
             errorDiv.style.display = 'block';
+            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
         }
 
-        if (confirm(`Confirma o agendamento para ${bookingData.date} às ${bookingData.time}?`)) {
+        // Confirmação final visual (usando o próprio navegador por simplicidade)
+        if (confirm(`Confirmar agendamento para ${bookingData.date} às ${bookingData.time}? Você será redirecionado para o WhatsApp.`)) {
             
-            // 1. Salvar Bloqueio no LocalStorage (Simulando Backend)
+            // 1. Salvar Bloqueio no LocalStorage
             const storageKey = `${bookingData.date}_${bookingData.service}`;
             const currentTaken = JSON.parse(localStorage.getItem(storageKey)) || [];
             currentTaken.push(bookingData.time);
             localStorage.setItem(storageKey, JSON.stringify(currentTaken));
 
-            // 2. Preparar Link WhatsApp
+            // 2. Preparar Link WhatsApp com formatação melhorada
             const [ano, mes, dia] = bookingData.date.split('-');
             const msg = `
-*Olá, gostaria de confirmar um agendamento no Consultório Olharys!*
+Olá! Gostaria de confirmar o seguinte agendamento no *Consultório Olharys*:
 
-👤 *Paciente:* ${name}
-📍 *Cidade:* ${city}
-📱 *Telefone:* ${phone}
-
+====================
+✅ *DADOS DO AGENDAMENTO*
+====================
 👨‍⚕️ *Profissional:* ${bookingData.service}
 📅 *Data:* ${dia}/${mes}/${ano}
 ⏰ *Horário:* ${bookingData.time}
-💰 *Valor:* R$ ${bookingData.price},00
+💰 *Valor Estimado:* R$ ${bookingData.price},00
+
+====================
+👤 *DADOS DO PACIENTE*
+====================
+*Nome:* ${name}
+*Cidade:* ${city}
+*Telefone:* ${phone}
+
+Aguardo a confirmação. Obrigado!
             `.trim();
 
             const encodedMsg = encodeURIComponent(msg);
+            // Usando wa.me api que funciona bem em mobile e desktop
             const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMsg}`;
 
-            // 3. Redirecionar
+            // 3. Redirecionar em nova aba
             window.open(whatsappLink, '_blank');
             
-            // Opcional: Recarregar a página para limpar
-            setTimeout(() => {
-                alert("Agendamento iniciado! Finalize a conversa no WhatsApp.");
-                location.reload();
-            }, 1000);
+            // Feedback e reset
+            document.getElementById('step3').innerHTML = `
+                <div style="text-align:center; padding: 3rem;">
+                    <h2 style="color: var(--success); margin-bottom:1rem;">Agendamento Iniciado!</h2>
+                    <p style="font-size:1.2rem; color:#555;">Por favor, conclua o envio da mensagem na janela do WhatsApp que foi aberta.</p>
+                    <button class="btn-next" style="margin-top:2rem;" onclick="location.reload()">Fazer Novo Agendamento</button>
+                </div>
+            `;
         }
     }
 </script>
