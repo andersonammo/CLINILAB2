@@ -3,333 +3,530 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CONSULTÓRIO OLHARYS - Sua Saúde Visual</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-        import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
-
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'olharys-2026-v4';
-
-        let db, auth;
-
-        async function initSystem() {
-            if (!firebaseConfig.apiKey) {
-                console.warn("Firebase não configurado.");
-                return;
-            }
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-
-            // Autenticação robusta conforme regras
-            const initAuth = async () => {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            };
-            await initAuth();
-        }
-        initSystem();
-
-        window.selectedProf = null;
-        window.selectedDate = null;
-        window.selectedTime = null;
-
-        const professionals = [
-            { id: 'optometrista', name: 'OPTOMETRISTA', role: 'Exame de Vista', price: 120.00, icon: '👁️' },
-            { id: 'oftalmologista', name: 'OFTALMOLOGISTA', role: 'Consulta Médica', price: 150.00, icon: '👨🏻‍⚕️' }
-        ];
-
-        const holidays2026 = [
-            '2026-01-01', '2026-02-17', '2026-04-03', '2026-04-21', 
-            '2026-05-01', '2026-06-04', '2026-09-07', '2026-10-12', 
-            '2026-11-02', '2026-11-15', '2026-12-25'
-        ];
-
-        window.selectProfessional = (id) => {
-            window.selectedProf = professionals.find(p => p.id === id);
-            document.querySelectorAll('.prof-card').forEach(el => el.classList.remove('ring-4', 'ring-teal-500', 'bg-teal-50'));
-            document.getElementById(`card-${id}`).classList.add('ring-4', 'ring-teal-500', 'bg-teal-50');
-            document.getElementById('step-2').classList.remove('hidden');
-            document.getElementById('step-2').scrollIntoView({ behavior: 'smooth' });
-            if(window.selectedDate) window.loadSlots();
-        };
-
-        window.handleDateChange = () => {
-            const input = document.getElementById('date-input');
-            const date = new Date(input.value + 'T00:00:00');
-            const dayOfWeek = date.getDay();
-            const dateString = input.value;
-            const errorEl = document.getElementById('date-error');
-            errorEl.classList.add('hidden');
-            if (dayOfWeek === 0) {
-                errorEl.innerText = "Não atendemos aos Domingos.";
-                errorEl.classList.remove('hidden');
-                return;
-            }
-            if (holidays2026.includes(dateString)) {
-                errorEl.innerText = "Esta data é um feriado nacional.";
-                errorEl.classList.remove('hidden');
-                return;
-            }
-            window.selectedDate = dateString;
-            window.loadSlots();
-        };
-
-        window.loadSlots = async () => {
-            if(!window.selectedProf || !window.selectedDate || !db) return;
-            const container = document.getElementById('slots-container');
-            container.innerHTML = '<p class="text-gray-500 col-span-3 text-center">Carregando horários...</p>';
-            
-            const slots = [];
-            for (let h = 8; h < 18; h++) {
-                slots.push(`${h < 10 ? '0'+h : h}:00`);
-                slots.push(`${h < 10 ? '0'+h : h}:30`);
-            }
-            const dateObj = new Date(window.selectedDate + 'T00:00:00');
-            if (dateObj.getDay() === 6) { // Sábado atende até 13h
-                const saturdayLimitIndex = slots.indexOf("13:00");
-                if (saturdayLimitIndex > -1) slots.splice(saturdayLimitIndex); 
-            }
-
-            let takenSlots = [];
-            try {
-                const q = query(
-                    collection(db, 'artifacts', appId, 'public', 'data', 'appointments'), 
-                    where("profId", "==", window.selectedProf.id), 
-                    where("date", "==", window.selectedDate)
-                );
-                const querySnapshot = await getDocs(q);
-                querySnapshot.forEach((doc) => takenSlots.push(doc.data().time));
-            } catch (e) { 
-                console.error("Erro ao buscar horários:", e); 
-            }
-
-            container.innerHTML = '';
-            const isAdminMode = document.getElementById('admin-toggle').checked;
-            
-            slots.forEach(time => {
-                const isTaken = takenSlots.includes(time);
-                const btn = document.createElement('button');
-                btn.className = `p-3 rounded-lg text-sm font-bold border transition-all ${isTaken ? 'bg-red-100 text-red-400 cursor-not-allowed border-red-200' : 'bg-white hover:bg-teal-500 hover:text-white border-gray-200 text-gray-700'}`;
-                if (isTaken) {
-                    btn.innerText = isAdminMode ? `${time} (X)` : "Ocupado";
-                    btn.disabled = !isAdminMode;
-                } else {
-                    btn.innerText = time;
-                    btn.onclick = () => window.selectTime(time, btn);
-                }
-                container.appendChild(btn);
-            });
-            document.getElementById('step-3').classList.remove('hidden');
-        };
-
-        window.selectTime = (time, btnElement) => {
-            window.selectedTime = time;
-            document.querySelectorAll('#slots-container button').forEach(b => {
-                if(!b.disabled) b.className = 'p-3 rounded-lg text-sm font-bold border bg-white border-gray-200 text-gray-700';
-            });
-            btnElement.className = 'p-3 rounded-lg text-sm font-bold border bg-teal-600 text-white border-teal-600 shadow-lg scale-105';
-            
-            const isAdminMode = document.getElementById('admin-toggle').checked;
-            if (isAdminMode) {
-                // Lógica de bloqueio rápido para admin
-                if(confirm(`Deseja bloquear o horário ${time}?`)) {
-                    window.saveAppointment({ name: 'BLOQUEADO', phone: 'N/A', city: 'N/A' }, true);
-                }
-            } else {
-                document.getElementById('step-4').classList.remove('hidden');
-                document.getElementById('step-4').scrollIntoView({ behavior: 'smooth' });
-            }
-        };
-
-        window.finishBooking = async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btn-confirm');
-            const clientData = {
-                name: document.getElementById('client-name').value,
-                phone: document.getElementById('client-phone').value,
-                city: document.getElementById('client-city').value
-            };
-            btn.innerText = "Agendando...";
-            btn.disabled = true;
-
-            await window.saveAppointment(clientData, false);
-            
-            const msg = `Olá, quero agendar no CONSULTÓRIO OLHARYS.%0A%0A*Tipo:* ${window.selectedProf.name}%0A*Data:* ${window.selectedDate.split('-').reverse().join('/')}%0A*Horário:* ${window.selectedTime}%0A%0ANome: ${clientData.name}`;
-            window.open(`https://wa.me/5541996509734?text=${msg}`, '_blank');
-            location.reload();
-        };
-
-        window.saveAppointment = async (clientData, isBlock) => {
-            if (!db) return;
-            const docId = `${window.selectedProf.id}_${window.selectedDate}_${window.selectedTime}`;
-            try {
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'appointments', docId), {
-                    profId: window.selectedProf.id,
-                    date: window.selectedDate,
-                    time: window.selectedTime,
-                    client: clientData,
-                    type: isBlock ? 'block' : 'appointment',
-                    createdAt: new Date().toISOString()
-                });
-                if(isBlock) location.reload();
-            } catch (e) { console.error("Erro ao salvar:", e); }
-        };
-    </script>
-
+    <title>Consultório Olharys - Agendamento</title>
     <style>
-        body { font-family: 'Montserrat', sans-serif; background-color: #6CC0BA; }
-        .hero-pattern {
-            background-color: #0d5c56;
-            background-image: url("https://images.unsplash.com/photo-1570222094114-2819cd595435?q=80&w=1920&auto=format&fit=crop");
-            background-size: cover;
-            background-position: center;
-            background-blend-mode: overlay;
+        :root {
+            --primary: #2563eb;
+            --secondary: #1e40af;
+            --background: #f3f4f6;
+            --text: #1f2937;
+            --white: #ffffff;
+            --error: #ef4444;
+            --success: #10b981;
+            --disabled: #9ca3af;
         }
-        .glass {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        .eye-icon {
-            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.2));
+
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
         }
-        input[type="date"]::-webkit-calendar-picker-indicator {
+
+        header {
+            background-color: var(--white);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        header h1 {
+            color: var(--primary);
+            font-size: 1.8rem;
+        }
+
+        main {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .step-container {
+            background: var(--white);
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+            display: none; /* Escondido por padrão */
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .step-container.active {
+            display: block;
+        }
+
+        h2 {
+            margin-bottom: 1.5rem;
+            color: var(--secondary);
+            border-bottom: 2px solid var(--background);
+            padding-bottom: 0.5rem;
+        }
+
+        /* Passo 1: Seleção de Serviço */
+        .service-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            border: 2px solid var(--background);
+            border-radius: 8px;
+            padding: 1.5rem;
             cursor: pointer;
-            filter: invert(0.5) sepia(1) saturate(5) hue-rotate(145deg);
+            transition: all 0.3s;
+            text-align: center;
         }
+
+        .card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .card.selected {
+            border-color: var(--primary);
+            background-color: #eff6ff;
+        }
+
+        .price {
+            display: block;
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-top: 0.5rem;
+        }
+
+        /* Passo 2: Calendário e Horários */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        input[type="date"], input[type="text"], input[type="tel"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .time-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 0.8rem;
+            margin-top: 1rem;
+        }
+
+        .time-slot {
+            padding: 0.5rem;
+            background: var(--white);
+            border: 1px solid var(--primary);
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .time-slot:hover {
+            background: var(--primary);
+            color: var(--white);
+        }
+
+        .time-slot.selected {
+            background: var(--primary);
+            color: var(--white);
+            box-shadow: 0 0 0 2px var(--secondary);
+        }
+
+        .time-slot.disabled {
+            background-color: #e5e7eb;
+            border-color: #d1d5db;
+            color: var(--disabled);
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
+
+        /* Botões */
+        .btn-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .btn-next {
+            background-color: var(--success);
+            color: var(--white);
+        }
+        
+        .btn-next:hover {
+            background-color: #059669;
+        }
+
+        .btn-back {
+            background-color: #9ca3af;
+            color: var(--white);
+        }
+
+        /* Mensagens de Erro */
+        .error-msg {
+            color: var(--error);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Resumo final */
+        .summary-box {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--primary);
+        }
+        .summary-item {
+            margin-bottom: 0.5rem;
+        }
+        .summary-label {
+            font-weight: bold;
+            color: var(--secondary);
+        }
+
     </style>
 </head>
-<body class="text-slate-800">
+<body>
 
-    <!-- CABEÇALHO -->
-    <header class="hero-pattern h-[550px] flex items-center justify-center relative shadow-2xl">
-        <div class="absolute inset-0 bg-gradient-to-t from-[#6CC0BA] to-transparent opacity-90"></div>
-        
-        <div class="container mx-auto px-6 relative z-10 text-center text-white">
-            <h2 class="text-lg font-semibold tracking-widest text-teal-100 mb-2 uppercase">Seja Bem-vindo ao</h2>
-            <h1 class="text-5xl md:text-7xl font-bold tracking-tight">CONSULTÓRIO OLHARYS</h1>
-            
-            <!-- ÍCONE DE OLHO ABAIXO DO NOME -->
-            <div class="flex justify-center mt-6 mb-6">
-                <svg class="eye-icon w-20 h-20 md:w-24 md:h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                </svg>
+<header>
+    <h1>Consultório Olharys</h1>
+    <p>Excelência em visão</p>
+</header>
+
+<main>
+    <div id="step1" class="step-container active">
+        <h2>1. Escolha o Profissional</h2>
+        <div class="service-grid">
+            <div class="card" onclick="selectService('Optometrista', 120, this)">
+                <h3>Optometrista</h3>
+                <p>Exame de vista completo</p>
+                <span class="price">A partir de R$ 120,00</span>
             </div>
-
-            <p class="text-xl font-light italic opacity-90 mb-8 max-w-lg mx-auto">"Sua saúde visual é a nossa prioridade em cada detalhe."</p>
-            
-            <a href="#agendamento" class="bg-white hover:bg-teal-50 text-teal-700 font-bold py-4 px-10 rounded-full shadow-lg transition-all transform hover:scale-105 border-2 border-white inline-block">
-                Agendar Agora
-            </a>
+            <div class="card" onclick="selectService('Oftalmologista', 150, this)">
+                <h3>Oftalmologista</h3>
+                <p>Saúde ocular e diagnósticos</p>
+                <span class="price">A partir de R$ 150,00</span>
+            </div>
         </div>
-    </header>
-
-    <!-- ADMIN TOGGLE (Para controle interno) -->
-    <div class="bg-teal-900 text-white py-2 px-6 flex justify-end items-center gap-3 text-xs">
-        <span>Admin (Bloquear Horário):</span>
-        <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="admin-toggle" class="sr-only peer" onchange="window.loadSlots()">
-            <div class="w-9 h-5 bg-teal-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-500"></div>
-        </label>
+        <div class="error-msg" id="error-step1">Por favor, selecione um profissional.</div>
+        <div class="btn-group" style="justify-content: flex-end;">
+            <button class="btn-next" onclick="goToStep(2)">Continuar</button>
+        </div>
     </div>
 
-    <!-- MAIN APP -->
-    <main id="agendamento" class="container mx-auto px-4 py-12 -mt-16 relative z-20">
-        <div class="glass rounded-3xl shadow-2xl overflow-hidden p-8 max-w-4xl mx-auto">
+    <div id="step2" class="step-container">
+        <h2>2. Data e Horário (2026)</h2>
+        <div class="form-group">
+            <label for="dateInput">Selecione uma data:</label>
+            <input type="date" id="dateInput" min="2026-01-01" max="2026-12-31">
+            <div class="error-msg" id="date-error"></div>
+        </div>
+
+        <div id="timeContainer" style="display:none;">
+            <label>Horários disponíveis:</label>
+            <p style="font-size: 0.9em; color: #666; margin-bottom: 0.5rem;">Atendimento das 08:00 às 18:00 (Almoço 12:00-14:00)</p>
+            <div class="time-grid" id="timeGrid">
+                </div>
+            <div class="error-msg" id="time-error">Selecione um horário.</div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-back" onclick="goToStep(1)">Voltar</button>
+            <button class="btn-next" onclick="goToStep(3)">Continuar</button>
+        </div>
+    </div>
+
+    <div id="step3" class="step-container">
+        <h2>3. Seus Dados</h2>
+        
+        <div class="summary-box">
+            <div class="summary-item"><span class="summary-label">Profissional:</span> <span id="sum-pro"></span></div>
+            <div class="summary-item"><span class="summary-label">Data:</span> <span id="sum-date"></span></div>
+            <div class="summary-item"><span class="summary-label">Horário:</span> <span id="sum-time"></span></div>
+            <div class="summary-item"><span class="summary-label">Valor:</span> <span id="sum-price"></span></div>
+        </div>
+
+        <div class="form-group">
+            <label for="name">Nome Completo</label>
+            <input type="text" id="name" placeholder="Digite seu nome">
+        </div>
+        <div class="form-group">
+            <label for="city">Cidade</label>
+            <input type="text" id="city" placeholder="Sua cidade">
+        </div>
+        <div class="form-group">
+            <label for="phone">Telefone (WhatsApp)</label>
+            <input type="tel" id="phone" placeholder="(XX) XXXXX-XXXX">
+        </div>
+
+        <div class="error-msg" id="form-error">Preencha todos os campos corretamente.</div>
+
+        <div class="btn-group">
+            <button class="btn-back" onclick="goToStep(2)">Voltar</button>
+            <button class="btn-next" onclick="finishBooking()">Concluir Agendamento</button>
+        </div>
+    </div>
+</main>
+
+<script>
+    // --- Configurações e Dados ---
+    const WHATSAPP_NUMBER = "5544991837620"; // Código país + DDD + Número
+    const YEAR = 2026;
+    
+    // Feriados Nacionais 2026 (Formato YYYY-MM-DD)
+    const HOLIDAYS_2026 = [
+        "2026-01-01", // Confraternização Universal
+        "2026-02-17", // Carnaval (Opcional, mas comum fechar)
+        "2026-04-03", // Sexta-feira Santa
+        "2026-04-21", // Tiradentes
+        "2026-05-01", // Dia do Trabalho
+        "2026-06-04", // Corpus Christi
+        "2026-09-07", // Independência do Brasil
+        "2026-10-12", // Nossa Sra. Aparecida
+        "2026-11-02", // Finados
+        "2026-11-15", // Proclamação da República
+        "2026-12-25"  // Natal
+    ];
+
+    // Estado da aplicação
+    let bookingData = {
+        service: null,
+        price: null,
+        date: null,
+        time: null,
+        patientName: null,
+        city: null,
+        phone: null
+    };
+
+    // --- Lógica de Inicialização ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // Define limites do input date
+        const dateInput = document.getElementById('dateInput');
+        dateInput.min = `${YEAR}-01-01`;
+        dateInput.max = `${YEAR}-12-31`;
+
+        dateInput.addEventListener('change', handleDateChange);
+    });
+
+    // --- Navegação entre Passos ---
+    function goToStep(stepNumber) {
+        // Validações antes de avançar
+        if (stepNumber === 2) {
+            if (!bookingData.service) {
+                document.getElementById('error-step1').style.display = 'block';
+                return;
+            }
+            document.getElementById('error-step1').style.display = 'none';
+        }
+
+        if (stepNumber === 3) {
+            if (!bookingData.date || !bookingData.time) {
+                alert("Por favor, selecione data e horário válidos.");
+                return;
+            }
+            updateSummary();
+        }
+
+        // Troca de abas
+        document.querySelectorAll('.step-container').forEach(el => el.classList.remove('active'));
+        document.getElementById(`step${stepNumber}`).classList.add('active');
+    }
+
+    // --- Passo 1: Seleção de Serviço ---
+    function selectService(name, price, element) {
+        bookingData.service = name;
+        bookingData.price = price;
+        
+        // Visual
+        document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+        element.classList.add('selected');
+        
+        // Resetar horário se mudar serviço (pois os slots dependem do profissional)
+        bookingData.time = null;
+        renderTimeSlots(); 
+    }
+
+    // --- Passo 2: Lógica de Calendário ---
+    function handleDateChange(e) {
+        const selectedDate = e.target.value;
+        const dateObj = new Date(selectedDate + 'T00:00:00'); // T00:00 para evitar timezone issues locais
+        const dayOfWeek = dateObj.getDay(); // 0 = Dom, 6 = Sab
+        const errorDiv = document.getElementById('date-error');
+        const timeContainer = document.getElementById('timeContainer');
+
+        bookingData.date = null;
+        timeContainer.style.display = 'none';
+        errorDiv.style.display = 'none';
+        errorDiv.innerText = '';
+
+        // 1. Validar Ano
+        if (dateObj.getFullYear() !== YEAR) {
+            errorDiv.innerText = "Agendamentos permitidos apenas para 2026.";
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        // 2. Validar Fim de Semana
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            errorDiv.innerText = "Não atendemos aos sábados e domingos.";
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        // 3. Validar Feriados
+        if (HOLIDAYS_2026.includes(selectedDate)) {
+            errorDiv.innerText = "Não haverá atendimento neste feriado nacional.";
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        // Data válida
+        bookingData.date = selectedDate;
+        timeContainer.style.display = 'block';
+        renderTimeSlots();
+    }
+
+    function renderTimeSlots() {
+        if (!bookingData.date || !bookingData.service) return;
+
+        const grid = document.getElementById('timeGrid');
+        grid.innerHTML = '';
+        
+        // Gerar horários: 08:00 as 17:00 (última consulta começa as 17h p/ acabar as 18h)
+        // Almoço: 12:00 as 14:00 (bloqueia slots das 12h e 13h)
+        const slots = [
+            "08:00", "09:00", "10:00", "11:00", 
+            // 12 e 13 almoço
+            "14:00", "15:00", "16:00", "17:00"
+        ];
+
+        // Recuperar agendamentos já feitos do LocalStorage
+        // Chave storage: "2026-05-10_Optometrista"
+        const storageKey = `${bookingData.date}_${bookingData.service}`;
+        const takenSlots = JSON.parse(localStorage.getItem(storageKey)) || [];
+
+        slots.forEach(time => {
+            const div = document.createElement('div');
+            div.className = 'time-slot';
+            div.innerText = time;
+
+            if (takenSlots.includes(time)) {
+                div.classList.add('disabled');
+                div.title = "Horário indisponível";
+            } else {
+                div.onclick = () => selectTime(time, div);
+            }
+
+            grid.appendChild(div);
+        });
+    }
+
+    function selectTime(time, element) {
+        if (element.classList.contains('disabled')) return;
+
+        bookingData.time = time;
+
+        // Visual
+        document.querySelectorAll('.time-slot').forEach(t => t.classList.remove('selected'));
+        element.classList.add('selected');
+        document.getElementById('time-error').style.display = 'none';
+    }
+
+    // --- Passo 3: Finalização ---
+    function updateSummary() {
+        // Formatar data para exibição brasileira
+        const [ano, mes, dia] = bookingData.date.split('-');
+        const dataFormatada = `${dia}/${mes}/${ano}`;
+
+        document.getElementById('sum-pro').innerText = bookingData.service;
+        document.getElementById('sum-date').innerText = dataFormatada;
+        document.getElementById('sum-time').innerText = bookingData.time;
+        document.getElementById('sum-price').innerText = `R$ ${bookingData.price},00`;
+    }
+
+    function finishBooking() {
+        const name = document.getElementById('name').value.trim();
+        const city = document.getElementById('city').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const errorDiv = document.getElementById('form-error');
+
+        if (!name || !city || !phone) {
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        if (confirm(`Confirma o agendamento para ${bookingData.date} às ${bookingData.time}?`)) {
             
-            <!-- ETAPA 1: PROFISSIONAL -->
-            <div class="mb-10">
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold">1</div>
-                    <h3 class="text-xl font-bold text-slate-800">Tipo de Atendimento</h3>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div id="card-optometrista" onclick="selectProfessional('optometrista')" class="prof-card cursor-pointer border-2 border-teal-100 rounded-2xl p-6 hover:shadow-xl transition-all text-center group bg-white">
-                        <div class="w-16 h-16 bg-teal-50 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">👁️</div>
-                        <h4 class="text-lg font-bold">OPTOMETRISTA</h4>
-                        <p class="text-sm text-gray-500 mb-2">Exame de Vista</p>
-                        <div class="mt-2 text-teal-700 font-bold text-xl">R$ 120,00</div>
-                    </div>
-                    <div id="card-oftalmologista" onclick="selectProfessional('oftalmologista')" class="prof-card cursor-pointer border-2 border-teal-100 rounded-2xl p-6 hover:shadow-xl transition-all text-center group bg-white">
-                        <div class="w-16 h-16 bg-teal-50 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">👨🏻‍⚕️</div>
-                        <h4 class="text-lg font-bold">OFTALMOLOGISTA</h4>
-                        <p class="text-sm text-gray-500 mb-2">Consulta Médica</p>
-                        <div class="mt-2 text-teal-700 font-bold text-xl">R$ 150,00</div>
-                    </div>
-                </div>
-            </div>
+            // 1. Salvar Bloqueio no LocalStorage (Simulando Backend)
+            const storageKey = `${bookingData.date}_${bookingData.service}`;
+            const currentTaken = JSON.parse(localStorage.getItem(storageKey)) || [];
+            currentTaken.push(bookingData.time);
+            localStorage.setItem(storageKey, JSON.stringify(currentTaken));
 
-            <!-- ETAPA 2: DATA -->
-            <div id="step-2" class="mb-10 hidden">
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold">2</div>
-                    <h3 class="text-xl font-bold text-slate-800">Escolha a Data (2026)</h3>
-                </div>
-                <div class="max-w-xs mx-auto md:mx-0">
-                    <input type="date" id="date-input" onchange="handleDateChange()" min="2026-01-01" max="2026-12-31" class="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none bg-white font-medium shadow-sm">
-                    <p id="date-error" class="text-red-500 text-sm mt-2 hidden font-bold"></p>
-                </div>
-            </div>
+            // 2. Preparar Link WhatsApp
+            const [ano, mes, dia] = bookingData.date.split('-');
+            const msg = `
+*Olá, gostaria de confirmar um agendamento no Consultório Olharys!*
 
-            <!-- ETAPA 3: HORÁRIOS -->
-            <div id="step-3" class="mb-10 hidden">
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold">3</div>
-                    <h3 class="text-xl font-bold text-slate-800">Selecione o Horário</h3>
-                </div>
-                <div id="slots-container" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3"></div>
-            </div>
+👤 *Paciente:* ${name}
+📍 *Cidade:* ${city}
+📱 *Telefone:* ${phone}
 
-            <!-- ETAPA 4: DADOS FINAIS -->
-            <div id="step-4" class="hidden border-t border-gray-100 pt-8">
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold">4</div>
-                    <h3 class="text-xl font-bold text-slate-800">Finalizar Agendamento</h3>
-                </div>
-                <form onsubmit="finishBooking(event)" class="space-y-4">
-                    <input type="text" id="client-name" required placeholder="Nome Completo do Paciente" class="w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-teal-500 shadow-sm">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="tel" id="client-phone" required placeholder="WhatsApp com DDD" class="p-4 border rounded-xl outline-none focus:ring-2 focus:ring-teal-500 shadow-sm">
-                        <input type="text" id="client-city" placeholder="Sua Cidade" class="p-4 border rounded-xl outline-none focus:ring-2 focus:ring-teal-500 shadow-sm">
-                    </div>
-                    <button type="submit" id="btn-confirm" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-5 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 text-lg mt-4">
-                        ✅ Confirmar Agendamento no WhatsApp
-                    </button>
-                    <p class="text-xs text-center text-gray-400 mt-2">Você será redirecionado para o WhatsApp da clínica para validação final.</p>
-                </form>
-            </div>
+👨‍⚕️ *Profissional:* ${bookingData.service}
+📅 *Data:* ${dia}/${mes}/${ano}
+⏰ *Horário:* ${bookingData.time}
+💰 *Valor:* R$ ${bookingData.price},00
+            `.trim();
 
-        </div>
-    </main>
+            const encodedMsg = encodeURIComponent(msg);
+            const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMsg}`;
 
-    <!-- RODAPÉ -->
-    <footer class="bg-teal-900 text-teal-100 py-12 text-center mt-12">
-        <div class="container mx-auto px-6">
-            <svg class="w-12 h-12 text-teal-500 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-            </svg>
-            <p class="text-lg font-bold tracking-widest uppercase">Consultório Olharys</p>
-            <p class="text-sm opacity-60 mt-2 italic">Qualidade de visão ao seu alcance.</p>
-            <div class="mt-6 pt-6 border-t border-teal-800 text-xs opacity-40">
-                &copy; 2026 Todos os direitos reservados.
-            </div>
-        </div>
-    </footer>
+            // 3. Redirecionar
+            window.open(whatsappLink, '_blank');
+            
+            // Opcional: Recarregar a página para limpar
+            setTimeout(() => {
+                alert("Agendamento iniciado! Finalize a conversa no WhatsApp.");
+                location.reload();
+            }, 1000);
+        }
+    }
+</script>
 
 </body>
 </html>
